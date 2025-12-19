@@ -35,27 +35,21 @@ const BookingSchema = new Schema<IBooking>(
 );
 
 // Pre-save hook to validate event existence
-BookingSchema.pre('save', async function (next) {
-  // Only validate eventId if it's new or modified
-  if (this.isModified('eventId')) {
-    try {
-      // Dynamically import Event model to avoid circular dependency
-      const Event = models.Event || (await import('./event.model')).default;
-      
-      const eventExists = await Event.findById(this.eventId);
-      
-      if (!eventExists) {
-        return next(new Error('Referenced event does not exist'));
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        return next(error);
-      }
-      return next(new Error('Failed to validate event reference'));
+//
+// IMPORTANT: Use promise/async middleware style (no `next` callback) to avoid
+// "next is not a function" errors when Mongoose treats the hook as async.
+BookingSchema.pre('save', async function () {
+  // Validate eventId for new docs, or if it was changed.
+  if (this.isNew || this.isModified('eventId')) {
+    // Dynamically import Event model to avoid circular dependency
+    const Event = models.Event || (await import('./event.model')).default;
+
+    const eventExists = await Event.exists({ _id: this.eventId });
+
+    if (!eventExists) {
+      throw new Error('Referenced event does not exist');
     }
   }
-
-  next();
 });
 
 // Create index on eventId for faster lookups

@@ -7,6 +7,7 @@ import { getSimilarEventBySlug } from "@/lib/actions/event.action";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { cacheLife } from "next/cache";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
@@ -39,7 +40,7 @@ const EventTags = ({tags}: {tags: string[]}) => (
 
 const EventContent = async ({ slug }: { slug: string }) => {
   const request = await fetch(`${BASE_URL}/api/events/${slug}`);
-  const { event: { description, image, overview, date, time, location, mode, agenda, audience, tags, organizer} } = await request.json();
+  const { event: { _id, description, image, overview, date, time, location, mode, agenda, audience, tags, organizer} } = await request.json();
 
   if(!description) return notFound();
 
@@ -104,7 +105,7 @@ const EventContent = async ({ slug }: { slug: string }) => {
               </p>
             )}
 
-            <BookEvent />
+            <BookEvent eventId={_id} slug={slug} />
           </div>
         </aside>
 
@@ -124,6 +125,8 @@ const EventContent = async ({ slug }: { slug: string }) => {
 }
 
 const EventDetailsPage = async ( {params}: {params: Promise<{slug: string}>}) => {
+  'use cache'
+  cacheLife('hours')
   const { slug } = await params;
 
   return (
