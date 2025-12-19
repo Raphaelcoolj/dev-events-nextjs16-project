@@ -136,8 +136,11 @@ EventSchema.pre('save', async function () {
   }
 });
 
-// Create unique index on slug
-EventSchema.index({ slug: 1 }, { unique: true });
+// IMPORTANT:
+// `unique: true` on the schema path already creates an index.
+// Keeping both this AND a manual `EventSchema.index({slug:1})` creates duplicate indexes,
+// which shows up as `[MONGOOSE] Warning: Duplicate schema index on {"slug":1}`.
+// So we rely on the schema-path unique index only.
 
 // Prevent model recompilation in development (Next.js hot reload)
 const Event = models.Event || model<IEvent>('Event', EventSchema);

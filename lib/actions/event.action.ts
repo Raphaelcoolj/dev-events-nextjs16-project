@@ -1,16 +1,29 @@
 'use server';
 
-import  Event from "@/database/event.model";
+import Event from "@/database/event.model";
 import connectDB from "@/lib/mongodb";
+import { cacheLife } from "next/cache";
 
 export const getSimilarEventBySlug = async (slug: string) => {
-    try {
-        await connectDB()
+  /**
+   * Next 16 Cache Components note:
+   * This helper is used during route rendering/prerendering.
+   * Marking it as cached avoids “blocking route / uncached data” errors.
+   */
+  "use cache";
+  cacheLife("hours");
 
-        const event = await Event.findOne({ slug })
-        return await Event.find({ _id: { $ne: event._id}, tags: { $in: event.tags} } ).lean();
+  try {
+    await connectDB();
 
-    } catch (e) {
-        return [];
-    }
-}
+    const event = await Event.findOne({ slug }).lean();
+    if (!event) return [];
+
+    return await Event.find({
+      _id: { $ne: (event as any)._id },
+      tags: { $in: (event as any).tags },
+    }).lean();
+  } catch (e) {
+    return [];
+  }
+};
