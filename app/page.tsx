@@ -22,7 +22,8 @@ async function getEvents() {
   await connectDB();
 
   // `lean()` returns plain JSON-ish objects (better for RSC + serialization).
-  return Event.find().sort({ createdAt: -1 }).lean();
+  const events = await Event.find().sort({ createdAt: -1 }).lean();
+  return JSON.parse(JSON.stringify(events));
 }
 
 const page = async () => {

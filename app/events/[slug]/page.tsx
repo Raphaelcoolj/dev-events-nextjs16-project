@@ -59,7 +59,8 @@ async function getEventBySlug(slug: string) {
   cacheLife("hours");
 
   await connectDB();
-  return Event.findOne({ slug }).lean();
+  const event = await Event.findOne({ slug }).lean();
+  return JSON.parse(JSON.stringify(event));
 }
 
 async function getSimilarEvents(slug: string) {
