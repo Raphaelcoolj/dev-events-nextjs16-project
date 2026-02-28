@@ -1,17 +1,16 @@
 "use client";
 
-import { createEvent } from "@/lib/actions/event.action";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const CreateEventPage = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     overview: "",
-    image: "",
     venue: "",
     location: "",
     date: "",
@@ -27,23 +26,49 @@ const CreateEventPage = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setImageFile(e.target.files[0]);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!imageFile) {
+      alert("Please select an image file.");
+      return;
+    }
+
     setLoading(true);
 
-    const eventToCreate = {
-      ...formData,
-      agenda: formData.agenda.split(",").map((item) => item.trim()),
-      tags: formData.tags.split(",").map((item) => item.trim()),
-    };
+    const submissionData = new FormData();
+    // Append text fields
+    Object.entries(formData).forEach(([key, value]) => {
+      if (key === 'agenda' || key === 'tags') {
+        // Stringify arrays since the API expects them parsed from form data
+        const arrayData = value.split(",").map((item) => item.trim());
+        submissionData.append(key, JSON.stringify(arrayData));
+      } else {
+        submissionData.append(key, value);
+      }
+    });
+    
+    // Append the image file
+    submissionData.append("image", imageFile);
 
     try {
-        const result = await createEvent(eventToCreate);
-        if (result.success) {
+        const response = await fetch('/api/events', {
+          method: 'POST',
+          body: submissionData,
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
           router.push("/events");
           router.refresh();
         } else {
-          alert(`Error creating event: ${result.error}`);
+          alert(`Error creating event: ${result.message || result.error}`);
         }
     } catch (error: any) {
         alert(`An error occurred: ${error.message}`);
@@ -53,8 +78,8 @@ const CreateEventPage = () => {
   };
 
   return (
-    <section className="py-10">
-      <div className="max-w-2xl mx-auto w-full glass p-8 rounded-xl" id="book-event">
+    <section className="py-10 px-4 md:px-0">
+      <div className="max-w-2xl mx-auto w-full glass p-6 md:p-8 rounded-xl" id="book-event">
         <h2 className="text-3xl font-bold mb-8 text-gradient text-center">Create New Event</h2>
         
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
@@ -200,17 +225,19 @@ const CreateEventPage = () => {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label htmlFor="image" className="font-semibold text-light-100">Image URL</label>
+            <label htmlFor="image" className="font-semibold text-light-100">Event Image</label>
             <input
-              type="url"
+              type="file"
               id="image"
               name="image"
-              value={formData.image}
-              onChange={handleChange}
-              placeholder="https://example.com/banner.jpg"
-              className="bg-dark-200 rounded-[6px] px-5 py-2.5 text-white border border-transparent focus:border-primary outline-none transition-all"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="bg-dark-200 rounded-[6px] px-5 py-2.5 text-white border border-transparent focus:border-primary outline-none transition-all file:bg-primary file:border-none file:rounded-md file:px-3 file:py-1 file:mr-4 file:font-semibold file:cursor-pointer"
               required
             />
+            {imageFile && (
+              <p className="text-sm text-light-100 mt-1">Selected: {imageFile.name}</p>
+            )}
           </div>
 
           <div className="flex flex-col gap-2">
